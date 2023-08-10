@@ -7,7 +7,7 @@
 [![GitHub](https://img.shields.io/static/v1.svg?color=f5d410&labelColor=11215a&logoColor=ffffff&style=for-the-badge&label=srb.at&message=github&logo=github)](https://github.com/SRBConsultingTeam/)
 [![License](https://img.shields.io/static/v1.svg?color=f5d410&labelColor=11215a&logoColor=ffffff&style=for-the-badge&label=License&message=MIT)](LICENSE)
 
-andDogs is a simple bash script to demonstrate the usage of an OData-API. Therefor he script needs an appropriate backend where the data is posted to, otherwise it will return an error. Don't use the script in productive environments as it is only a proof of concept.
+andDogs is a simple bash script to demonstrate the usage of an OData-API. Therefor the script needs an appropriate backend where the data is posted to, otherwise it will return an error. Don't use the script in productive environments as it is only a proof of concept.
 
 Further details on the script can be found in an upcoming blog post.
 
