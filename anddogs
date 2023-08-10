@@ -1,0 +1,94 @@
+#!/bin/bash
+
+get_values_from_config () {
+
+  OLDIFS="$IFS"
+  IFS=$'\n'
+
+  VALUESRAW=$(jq -r ."$1"[].TEXT? conf.json)
+  VALUES=""
+  for n in $VALUESRAW; do
+    VALUES+="${n}|"
+  done
+  
+  IFS="$OLDIFS"
+  echo $VALUES;
+}
+
+get_value_from_config () {
+	echo $(jq -r ".$1" conf.json | tr -d '\n')
+}
+
+LEISTUNGSARTEN=$(get_values_from_config "LST_ART")
+PSPS=$(get_values_from_config "PSP")
+ANAB_ARTEN=$(get_values_from_config "ANAB_ART")
+
+SERVICE_ENDPOINT=$(get_value_from_config "SERVICE_ENDPOINT")
+SERVICE_USER=$(get_value_from_config "SERVICE_USER")
+
+
+RESULT=$(zenity --forms --title "andDogs" --text "Buchung erfassen" \
+   --add-combo "Leistungsart" --combo-values "$LEISTUNGSARTEN" \
+   --add-combo "An-/Abwesenheitsart" --combo-values "$ANAB_ARTEN" \
+   --add-combo "Kontierungselement" --combo-values "$PSPS" \
+   --add-calendar="Buchungsdatum" \
+   --add-entry "Dauer" \
+   --add-entry "Langtext")
+
+case $? in
+  0)
+  	LEISTUNGSART_T=$(echo $RESULT | cut -f1 -d '|')
+  	ANABART_T=$(echo $RESULT | cut -f2 -d '|')
+  	PSP_T=$(echo $RESULT | cut -f3 -d '|')
+  	DATE=$(echo $RESULT | cut -f4 -d '|')
+  	DAUER=$(echo $RESULT | cut -f5 -d '|')
+  	TEXT=$(echo $RESULT | cut -f6 -d '|')
+	
+  	LEISTUNGSART=$(jq -r ".LST_ART[] | select(.TEXT == \"$LEISTUNGSART_T\" ) .ID" conf.json)
+  	ANABART=$(jq -r ".ANAB_ART[] | select(.TEXT == \"$ANABART_T\" ) .ID" conf.json)
+  	PSP=$(jq -r ".PSP[] | select(.TEXT == \"$PSP_T\" ) .ID" conf.json)
+
+  	JSONDATE=$(date -d "$DATE 00:00 UTC" +"%s")
+  	JSONDATE+="000"
+  	
+	cookiefile=$(mktemp)
+	chmod 600 $cookiefile
+	trap "rm -f $cookiefile" 0 2 3 15
+
+	tempresponse=$(mktemp)
+	chmod 600 $tempresponse
+	trap "rm -f $tempresponse" 0 2 3 15
+
+	CSRFTOKEN=$(curl -s -X GET -I -c $cookiefile \
+	                 -H "x-csrf-token: fetch" \
+	                 -u "a.kasper" \
+	                 "$SERVICE_ENDPOINT?sap-client=001&\$filter=Datum%20eq%20datetime'9999-12-31T00:00:00'" \
+	                 | grep x-csrf-token \
+	                 | awk {'print $2'} \
+	                 | tr -d '\r' )
+
+	POSTREQUEST="{\"Datum\":\"\/Date($JSONDATE)\/\",\"AbsAttType\":\"$ANABART\",\"Unit\":\"H\",\"Duration\":\"$DAUER\",\"Longtext\":\"$TEXT\",\"WbsElement\":\"$PSP\",\"ActivityType\":\"$LEISTUNGSART\",\"LongtextNew\":\"$TEXT\"}"
+
+	HTTPSTATUS=$(curl "$SERVICE_ENDPOINT?" \
+	  -X POST \
+	  -b "@$cookiefile" \
+	  -H 'Accept: application/json' \
+	  -H "x-csrf-token: $CSRFTOKEN" \
+	  -H 'Content-Type: application/json; charset=utf-8' \
+	  --data-raw "$POSTREQUEST" \
+	  -w "%{http_code}" \
+	  -s -o $tempresponse )
+
+	if [ $HTTPSTATUS -ne 201 ]; then
+		echo "Error during webservice call: $HTTPSTATUS"
+		cat $tempresponse
+	else
+		jq -C "." $tempresponse
+	fi
+
+#  	echo "OK";;
+#  1)
+#  	echo "CANCEL";;
+#  -1)
+#	echo "ERROR";;
+esac
