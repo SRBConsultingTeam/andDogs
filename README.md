@@ -9,7 +9,7 @@
 
 andDogs is a simple bash script to demonstrate the usage of an OData-API. Therefor the script needs an appropriate backend where the data is posted to, otherwise it will return an error. Don't use the script in productive environments as it is only a proof of concept.
 
-Further details on the script can be found in an upcoming blog post.
+Further details on the script can be found in the blog post [Lieber ODATA als SAP GUI?](https://www.srb.at/blog--events/technologie--abap/index.aspx?detail=176&hl=Lieber%20ODATA%20als%20SAP%20GUI%3F).
 
 ![Screenshot of andDogs](assets/screenshot.png)
 
